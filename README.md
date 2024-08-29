@@ -1,70 +1,118 @@
-# Getting Started with Create React App
+# Outil de Réconciliation de Fichiers
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Table des matières
 
-## Available Scripts
+- [Outil de Réconciliation de Fichiers](#outil-de-réconciliation-de-fichiers)
+  - [Table des matières](#table-des-matières)
+  - [Description](#description)
+  - [Fonctionnalités](#fonctionnalités)
+  - [Prérequis](#prérequis)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Utilisation](#utilisation)
+  - [Déploiement](#déploiement)
+    - [Configuration spécifique à la plateforme](#configuration-spécifique-à-la-plateforme)
+  - [Dépannage](#dépannage)
+  - [Contribution](#contribution)
+  - [Licence](#licence)
 
-In the project directory, you can run:
+## Description
 
-### `npm start`
+Cet outil de réconciliation de fichiers est une application web React conçue pour comparer efficacement de grands volumes de données provenant de fichiers Excel (XLSX) ou CSV. Il est particulièrement utile pour les institutions financières ou toute organisation nécessitant une comparaison précise et rapide de données structurées.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Fonctionnalités
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- Support des fichiers XLSX et CSV jusqu'à 1,5 Go
+- Interface utilisateur intuitive pour la sélection des fichiers et des champs à comparer
+- Traitement asynchrone des données pour une performance optimale
+- Affichage détaillé des différences trouvées
+- Gestion des erreurs robuste
+- Options de déploiement flexibles (VPS, GitHub Pages, GitLab Pages)
 
-### `npm test`
+## Prérequis
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js (version 14 ou supérieure)
+- npm (généralement inclus avec Node.js)
+- Git
 
-### `npm run build`
+## Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Clonez le dépôt :
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+   ```
+   git clone https://votre-repo-url.git
+   cd nom-du-projet
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+2. Installez les dépendances :
 
-### `npm run eject`
+   ```
+   npm install
+   ```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Configuration
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+1. Copiez le fichier `.env.example` en `.env` :
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+   ```
+   cp .env.example .env
+   ```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+2. Modifiez le fichier `.env` selon vos besoins :
 
-## Learn More
+   ```
+   REACT_APP_MAX_FILE_SIZE=1610612736  # 1.5 Go en octets
+   REACT_APP_BATCH_SIZE=10000
+   ```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Utilisation
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+1. Lancez l'application en mode développement :
 
-### Code Splitting
+   ```
+   npm start
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+2. Ouvrez votre navigateur et accédez à `http://localhost:3000`
 
-### Analyzing the Bundle Size
+3. Suivez les instructions à l'écran pour uploader et comparer vos fichiers
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Déploiement
 
-### Making a Progressive Web App
+Utilisez le script `deploy.sh` pour déployer l'application :
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```
+./deploy.sh <vps|github|gitlab>
+```
 
-### Advanced Configuration
+Assurez-vous de configurer correctement les informations de déploiement dans le script avant de l'utiliser.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### Configuration spécifique à la plateforme
 
-### Deployment
+- **VPS** : Mettez à jour les variables `VPS_USER`, `VPS_HOST`, et `VPS_PATH` dans `deploy.sh`
+- **GitHub Pages** : Ajoutez `"homepage": "https://votre-nom-utilisateur.github.io/nom-du-repo"` à votre `package.json`
+- **GitLab Pages** : Assurez-vous que votre `.gitlab-ci.yml` est correctement configuré
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## Dépannage
 
-### `npm run build` fails to minify
+- **Erreur "File too large"** : Vérifiez la limite de taille de fichier dans `.env`
+- **Problèmes de performance** : Ajustez `REACT_APP_BATCH_SIZE` dans `.env`
+- **Erreurs de déploiement** : Vérifiez les logs et assurez-vous que toutes les configurations sont correctes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Contribution
+
+Les contributions sont les bienvenues ! Veuillez suivre ces étapes :
+
+1. Forkez le projet
+2. Créez votre branche de fonctionnalité (`git checkout -b feature/AmazingFeature`)
+3. Committez vos changements (`git commit -m 'Add some AmazingFeature'`)
+4. Poussez vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrez une Pull Request
+
+## Licence
+
+Distribué sous la licence MIT. Voir `LICENSE` pour plus d'informations.
+
+---
+
+Pour toute question ou support, veuillez ouvrir un ticket dans la section Issues du dépôt.
