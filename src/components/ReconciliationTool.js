@@ -1,16 +1,10 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import * as XLSX from 'xlsx';
-import { Sun, Moon, Upload, RefreshCw } from 'lucide-react';
+import { Sun, Moon, RefreshCw } from 'lucide-react';
 import Tooltip from './Tooltip';
-
-
-const MAX_FILE_SIZE = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
-const BATCH_SIZE = 10000; // Nombre de lignes à traiter par lot
-const ALLOWED_FILE_TYPES = [
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-excel',
-  'text/csv'
-];
+import FileSelector from './FileSelector';
+import FilePreview from './FilePreview';
+import { validateFile, getFileHeaders, generatePreview, readWorkbook } from '../utils';
+import { BATCH_SIZE } from '../constants';
 
 const FileComparisonUI = () => {
   const [file1, setFile1] = useState(null);
@@ -24,10 +18,12 @@ const FileComparisonUI = () => {
     compare: []
   });
   const [displayLimit, setDisplayLimit] = useState(100);
+  const [preview1, setPreview1] = useState(null);
+  const [preview2, setPreview2] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
   const workerRef = useRef(null);
   const [darkMode, setDarkMode] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  
 
   useEffect(() => {
     if (darkMode) {
@@ -53,43 +49,13 @@ const FileComparisonUI = () => {
       compare: []
     });
     setDisplayLimit(100);
+    setPreview1(null);
+    setPreview2(null);
+    setShowPreview(false);
     setCurrentStep(1);
     if (workerRef.current) {
       workerRef.current.terminate();
       workerRef.current = null;
-    }
-  };
-
-  const renderStepIndicator = () => {
-    const steps = [
-      { label: "Fichier 1", complete: !!file1 },
-      { label: "Fichier 2", complete: !!file2 },
-      { label: "Champs", complete: selectedFields.key && selectedFields.compare.length > 0 },
-      { label: "Comparer", complete: !!results }
-    ];
-
-    return (
-      <div className="flex justify-between items-center mb-6">
-        {steps.map((step, index) => (
-          <div key={index} className="flex flex-col items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              step.complete ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'
-            } ${currentStep === index + 1 ? 'ring-2 ring-blue-500' : ''}`}>
-              {step.complete ? '✓' : index + 1}
-            </div>
-            <span className="text-xs mt-1">{step.label}</span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const validateFile = (file) => {
-    if (file.size > MAX_FILE_SIZE) {
-      throw new Error(`La taille du fichier ne doit pas dépasser ${MAX_FILE_SIZE / 1024 / 1024 / 1024} GB.`);
-    }
-    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-      throw new Error('Type de fichier non autorisé. Veuillez uploader un fichier XLSX ou CSV.');
     }
   };
 
@@ -102,42 +68,16 @@ const FileComparisonUI = () => {
         setFile1(file);
         const headers = await getFileHeaders(file);
         setFields(headers);
+        setPreview1(await generatePreview(file));
       } else {
         setFile2(file);
+        setPreview2(await generatePreview(file));
       }
+      setCurrentStep(fileNumber === 1 ? 2 : 3);
     } catch (err) {
       setError(err.message);
     }
   };
-
-  const getFileHeaders = async (file) => {
-    try {
-      const workbook = await readWorkbook(file);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const headers = XLSX.utils.sheet_to_json(worksheet, { header: 1 })[0];
-      return headers;
-    } catch (err) {
-      throw new Error(`Erreur lors de la lecture des en-têtes : ${err.message}`);
-    }
-  };
-
-  const readWorkbook = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          resolve(workbook);
-        } catch (err) {
-          reject(new Error(`Erreur lors du traitement du fichier : ${err.message}`));
-        }
-      };
-      reader.onerror = (e) => reject(new Error('Erreur de lecture du fichier'));
-      reader.readAsArrayBuffer(file);
-    });
-  };
-
   const compareFiles = useCallback(async () => {
     if (!file1 || !file2 || !selectedFields.key || selectedFields.compare.length === 0) {
       setError("Veuillez charger les deux fichiers et sélectionner les champs de comparaison.");
@@ -156,7 +96,7 @@ const FileComparisonUI = () => {
         workerRef.current.terminate();
       }
 
-      workerRef.current = new Worker(new URL('./comparisonWorker.js', import.meta.url));
+      workerRef.current = new Worker(new URL('../comparisonWorker.js', import.meta.url));
 
       workerRef.current.onmessage = (e) => {
         if (e.data.type === 'progress') {
@@ -187,6 +127,30 @@ const FileComparisonUI = () => {
     setDisplayLimit(prevLimit => prevLimit + 100);
   };
 
+  const renderStepIndicator = () => {
+    const steps = [
+      { label: "Fichier 1", complete: !!file1 },
+      { label: "Fichier 2", complete: !!file2 },
+      { label: "Champs", complete: selectedFields.key && selectedFields.compare.length > 0 },
+      { label: "Comparer", complete: !!results }
+    ];
+
+    return (
+      <div className="flex justify-between items-center mb-6">
+        {steps.map((step, index) => (
+          <div key={index} className="flex flex-col items-center">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              step.complete ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-700'
+            } ${currentStep === index + 1 ? 'ring-2 ring-blue-500' : ''}`}>
+              {step.complete ? '✓' : index + 1}
+            </div>
+            <span className="text-xs mt-1">{step.label}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className={`min-h-screen p-4 ${darkMode ? 'dark bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
       <div className="max-w-4xl mx-auto">
@@ -211,37 +175,17 @@ const FileComparisonUI = () => {
         </div>
         {renderStepIndicator()}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {[1, 2].map((fileNum) => (
-            <div key={fileNum} className="mb-4">
-              <label className="block mb-2 font-semibold">
-                Fichier {fileNum} {fileNum === 1 ? '(Référence)' : '(À comparer)'}
-              </label>
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
-                    <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                      <span className="font-semibold">Cliquez pour uploader</span> ou glissez et déposez
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">XLSX, CSV</p>
-                  </div>
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={(e) => handleFileChange(e, fileNum)}
-                    accept=".csv,.xlsx,.xls"
-                  />
-                </label>
-              </div>
-              {(fileNum === 1 ? file1 : file2) && (
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  {(fileNum === 1 ? file1 : file2).name}
-                </p>
-              )}
-            </div>
-          ))}
+        <FileSelector fileNum={1} file={file1} onFileChange={handleFileChange} />
+          <FileSelector fileNum={2} file={file2} onFileChange={handleFileChange} />
         </div>
-
+        <FilePreview
+          preview1={preview1}
+          preview2={preview2}
+          file1={file1}
+          file2={file2}
+          showPreview={showPreview}
+          setShowPreview={setShowPreview}
+        />
         {fields.length > 0 && (
           <div className="mb-6">
             <label className="block mb-2 font-semibold">Champ clé pour la comparaison</label>

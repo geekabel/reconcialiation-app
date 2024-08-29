@@ -1,5 +1,5 @@
 import React from 'react';
-import ReconciliationTool from './ReconciliationTool';
+import ReconciliationTool from './components/ReconciliationTool';
 
 function App() {
   return (
