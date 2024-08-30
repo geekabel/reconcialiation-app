@@ -3,8 +3,10 @@ import { Sun, Moon, RefreshCw } from 'lucide-react';
 import Tooltip from './Tooltip';
 import FileSelector from './FileSelector';
 import FilePreview from './FilePreview';
-import { validateFile, getFileHeaders, generatePreview, readWorkbook } from '../utils';
+import { validateFile, getFileHeaders, generatePreview } from '../utils';
 import { BATCH_SIZE } from '../constants';
+import { FileCache } from '../services/FileCache';
+import { FileStreamService } from '../services/FileStreamService';
 
 const FileComparisonUI = () => {
   const [file1, setFile1] = useState(null);
@@ -78,9 +80,21 @@ const FileComparisonUI = () => {
       setError(err.message);
     }
   };
+
+  const processFile = async (file) => {
+    const cacheKey = `${file.name}-${file.lastModified}`;
+    let workbook = await FileCache.get(cacheKey);
+
+    if (!workbook) {
+      workbook = await FileStreamService.processFileInChunks(file, 1024 * 1024, setProgress);
+      await FileCache.set(cacheKey, workbook);
+    }
+
+    return workbook;
+  };
   const compareFiles = useCallback(async () => {
     if (!file1 || !file2 || !selectedFields.key || selectedFields.compare.length === 0) {
-      setError("Veuillez charger les deux fichiers et sélectionner les champs de comparaison.");
+      setError("Fichiers ou champs de comparaison manquants");
       return;
     }
 
@@ -89,8 +103,10 @@ const FileComparisonUI = () => {
     setResults(null);
 
     try {
-      const workbook1 = await readWorkbook(file1);
-      const workbook2 = await readWorkbook(file2);
+      const [workbook1, workbook2] = await Promise.all([
+        processFile(file1),
+        processFile(file2)
+      ]);
 
       if (workerRef.current) {
         workerRef.current.terminate();
